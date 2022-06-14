@@ -50,7 +50,7 @@ with open(annotation_file, 'r') as f:
 # Group all captions together having the same image ID.
 
 image_path_to_caption = collections.defaultdict(list)
-@st.cache
+
 for val in annotations['annotations']:
   caption = f"<start> {val['caption']} <end>"
   image_path = PATH + 'COCO_train2014_' + '%012d.jpg' % (val['image_id'])
