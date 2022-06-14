@@ -327,7 +327,7 @@ def plot_attention(image, result, attention_plot):
     plt.tight_layout()
     plt.show()
     
-def Testmethode()   #Testing Method
+def Testmethode()   
     image_url = 'https://tensorflow.org/images/surf.jpg'
     image_extension = image_url[-4:]
     image_path = tf.keras.utils.get_file('image'+image_extension, origin=image_url)
