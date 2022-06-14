@@ -26,6 +26,7 @@ def folder_assign():
 
         
 annotation_file = folder_assign()
+st.write(annotation_file)
 # Download image files
 @st.cache
 def download_pics():
@@ -43,6 +44,7 @@ def download_pics():
 
 
 PATH = download_pics()
+st.write(PATH)
 with open(annotation_file, 'r') as f:
     annotations = json.load(f)
     
