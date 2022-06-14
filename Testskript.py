@@ -37,9 +37,12 @@ def download_pics():
                 , extract=True)
         PATH = os.path.dirname(image_zip) + image_folder
         os.remove(image_zip)
+        return PATH
     else:
-        PATH = os.path.abspath('.') + image_folder
+        return os.path.abspath('.') + image_folder
 
+
+PATH = download_pics()
 with open(annotation_file, 'r') as f:
     annotations = json.load(f)
     
