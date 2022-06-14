@@ -41,9 +41,6 @@ def folder_assign():
 
 folder_assign()
 
-
-folder_assign()
-
 with open(annotation_file, 'r') as f:
     annotations = json.load(f)
     
