@@ -292,12 +292,14 @@ ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_path, max_to_keep=5)
 start_epoch = 0
 
 @st.cache
-if ckpt_manager.latest_checkpoint:
-  start_epoch = int(ckpt_manager.latest_checkpoint.split('-')[-1])
-  # restoring the latest checkpoint in checkpoint_path
-  ckpt.restore(ckpt_manager.latest_checkpoint)
+def check_checkpoints():
+    if ckpt_manager.latest_checkpoint:
+        start_epoch = int(ckpt_manager.latest_checkpoint.split('-')[-1])
+        # restoring the latest checkpoint in checkpoint_path
+        ckpt.restore(ckpt_manager.latest_checkpoint)
 
-  @st.cache
+check_checkpoints()        
+
 def evaluate(image):
     attention_plot = np.zeros((max_length, attention_features_shape))
 
