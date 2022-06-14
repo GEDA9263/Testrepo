@@ -9,6 +9,8 @@ import os
 import time
 import json
 from PIL import Image
+
+st.write("This is a heading")
 # Download caption annotation files
 annotation_folder = '/annotations/'
 if not os.path.exists(os.path.abspath('.') + annotation_folder):
