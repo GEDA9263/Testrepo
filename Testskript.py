@@ -132,8 +132,6 @@ for imgv in img_name_val_keys:
   img_name_val.extend([imgv] * capv_len)
   cap_val.extend(img_to_cap_vector[imgv])
 
-len(img_name_train), len(cap_train), len(img_name_val), len(cap_val)
-
 # Feel free to change these parameters according to your system's configuration
 
 BATCH_SIZE = 64
@@ -335,10 +333,11 @@ def Testmethode():
     image_path = tf.keras.utils.get_file('image'+image_extension, origin=image_url)
 
     result, attention_plot = evaluate(image_path)
-    st.write('Prediction Caption:', ' '.join(result))
     plot_attention(image_path, result, attention_plot)
     # opening the image
-    Image.open(image_path)
+    image = Image.open(image_path)
+    st.image(image)
+    st.write('Prediction Caption:', ' '.join(result))
     
     
 if st.button("Test"):
