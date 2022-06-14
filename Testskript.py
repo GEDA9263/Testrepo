@@ -333,7 +333,7 @@ def Testmethode():
     image_path = tf.keras.utils.get_file('image'+image_extension, origin=image_url)
 
     result, attention_plot = evaluate(image_path)
-    plot_attention(image_path, result, attention_plot)
+    #plot_attention(image_path, result, attention_plot)
     # opening the image
     image = Image.open(image_path)
     st.image(image)
