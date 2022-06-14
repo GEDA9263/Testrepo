@@ -10,9 +10,10 @@ import time
 import json
 from PIL import Image
 
-@st.cache
+
 # Download caption annotation files
 annotation_folder = '/annotations/'
+@st.cache
 if not os.path.exists(os.path.abspath('.') + annotation_folder):
   annotation_zip = tf.keras.utils.get_file('captions.zip',
                                            cache_subdir=os.path.abspath('.'),
