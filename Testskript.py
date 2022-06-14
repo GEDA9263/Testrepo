@@ -19,15 +19,16 @@ def folder_assign():
                 cache_subdir=os.path.abspath('.'),
                 origin='http://images.cocodataset.org/annotations/annotations_trainval2014.zip'
                 , extract=True)
-        annotation_file = os.path.dirname(annotation_zip) \
-            + '/annotations/captions_train2014.json'
+        return  os.path.dirname(annotation_zip) + '/annotations/captions_train2014.json'
         os.remove(annotation_zip)
     else:
-        annotation_file = os.path.abspath('.') \
-            + '/annotations/captions_train2014.json'
+        return os.path.abspath('.') + '/annotations/captions_train2014.json'
 
+        
+annotation_file = folder_assign()
 # Download image files
-
+@st.cache
+def download_pics():
     image_folder = '/train2014/'
     if not os.path.exists(os.path.abspath('.') + image_folder):
         image_zip = tf.keras.utils.get_file('train2014.zip',
@@ -38,8 +39,6 @@ def folder_assign():
         os.remove(image_zip)
     else:
         PATH = os.path.abspath('.') + image_folder
-
-folder_assign()
 
 with open(annotation_file, 'r') as f:
     annotations = json.load(f)
