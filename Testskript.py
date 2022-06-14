@@ -9,9 +9,8 @@ import os
 import time
 import json
 from PIL import Image
-
-st.write("This is a heading")
 # Download caption annotation files
+@st.cache
 annotation_folder = '/annotations/'
 if not os.path.exists(os.path.abspath('.') + annotation_folder):
   annotation_zip = tf.keras.utils.get_file('captions.zip',
@@ -24,6 +23,7 @@ else:
   annotation_file = os.path.abspath('.') +'/annotations/captions_train2014.json'
 
 # Download image files
+@st.cache
 image_folder = '/train2014/'
 if not os.path.exists(os.path.abspath('.') + image_folder):
   image_zip = tf.keras.utils.get_file('train2014.zip',
@@ -39,6 +39,7 @@ with open(annotation_file, 'r') as f:
     annotations = json.load(f)
     
 # Group all captions together having the same image ID.
+@st.cache
 image_path_to_caption = collections.defaultdict(list)
 for val in annotations['annotations']:
   caption = f"<start> {val['caption']} <end>"
@@ -61,6 +62,7 @@ for image_path in train_image_paths:
   train_captions.extend(caption_list)
   img_name_vector.extend([image_path] * len(caption_list))
 
+@st.cache
 def load_image(image_path):
     img = tf.io.read_file(image_path)
     img = tf.io.decode_jpeg(img, channels=3)
@@ -79,6 +81,7 @@ caption_dataset = tf.data.Dataset.from_tensor_slices(train_captions)
 
 # We will override the default standardization of TextVectorization to preserve
 # "<>" characters, so we preserve the tokens for the <start> and <end>.
+@st.cache
 def standardize(inputs):
   inputs = tf.strings.lower(inputs)
   return tf.strings.regex_replace(inputs,
@@ -132,6 +135,8 @@ for imgv in img_name_val_keys:
   img_name_val.extend([imgv] * capv_len)
   cap_val.extend(img_to_cap_vector[imgv])
 
+len(img_name_train), len(cap_train), len(img_name_val), len(cap_val)
+
 # Feel free to change these parameters according to your system's configuration
 
 BATCH_SIZE = 64
@@ -145,6 +150,8 @@ features_shape = 2048
 attention_features_shape = 64
 
 # Load the numpy files
+
+@st.cache
 def map_func(img_name, cap):
   img_tensor = np.load(img_name.decode('utf-8')+'.npy')
   return img_tensor, cap
@@ -159,7 +166,7 @@ dataset = dataset.map(lambda item1, item2: tf.numpy_function(
 # Shuffle and batch
 dataset = dataset.shuffle(BUFFER_SIZE).batch(BATCH_SIZE)
 dataset = dataset.prefetch(buffer_size=tf.data.AUTOTUNE)
-
+@st.cache
 class BahdanauAttention(tf.keras.Model):
   def __init__(self, units):
     super(BahdanauAttention, self).__init__()
@@ -190,7 +197,8 @@ class BahdanauAttention(tf.keras.Model):
     context_vector = tf.reduce_sum(context_vector, axis=1)
 
     return context_vector, attention_weights
-
+  
+@st.cache
 class CNN_Encoder(tf.keras.Model):
     # Since you have already extracted the features and dumped it
     # This encoder passes those features through a Fully connected layer
@@ -203,7 +211,8 @@ class CNN_Encoder(tf.keras.Model):
         x = self.fc(x)
         x = tf.nn.relu(x)
         return x
-    
+      
+@st.cache   
 class RNN_Decoder(tf.keras.Model):
   def __init__(self, embedding_dim, units, vocab_size):
     super(RNN_Decoder, self).__init__()
@@ -246,6 +255,7 @@ class RNN_Decoder(tf.keras.Model):
   def reset_state(self, batch_size):
     return tf.zeros((batch_size, self.units))
 
+@st.cache
 encoder = CNN_Encoder(embedding_dim)
 decoder = RNN_Decoder(embedding_dim, units, tokenizer.vocabulary_size())
 
@@ -253,7 +263,7 @@ optimizer = tf.keras.optimizers.Adam()
 loss_object = tf.keras.losses.SparseCategoricalCrossentropy(
     from_logits=True, reduction='none')
 
-
+@st.cache
 def loss_function(real, pred):
   mask = tf.math.logical_not(tf.math.equal(real, 0))
   loss_ = loss_object(real, pred)
@@ -270,11 +280,14 @@ ckpt = tf.train.Checkpoint(encoder=encoder,
 ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_path, max_to_keep=5)
 
 start_epoch = 0
+
+@st.cache
 if ckpt_manager.latest_checkpoint:
   start_epoch = int(ckpt_manager.latest_checkpoint.split('-')[-1])
   # restoring the latest checkpoint in checkpoint_path
   ckpt.restore(ckpt_manager.latest_checkpoint)
 
+  @st.cache
 def evaluate(image):
     attention_plot = np.zeros((max_length, attention_features_shape))
 
@@ -309,36 +322,19 @@ def evaluate(image):
 
     attention_plot = attention_plot[:len(result), :]
     return result, attention_plot
-
-def plot_attention(image, result, attention_plot):
-    temp_image = np.array(Image.open(image))
-
-    fig = plt.figure(figsize=(10, 10))
-
-    len_result = len(result)
-    for i in range(len_result):
-        temp_att = np.resize(attention_plot[i], (8, 8))
-        grid_size = max(int(np.ceil(len_result/2)), 2)
-        ax = fig.add_subplot(grid_size, grid_size, i+1)
-        ax.set_title(result[i])
-        img = ax.imshow(temp_image)
-        ax.imshow(temp_att, cmap='gray', alpha=0.6, extent=img.get_extent())
-
-    plt.tight_layout()
-    plt.show()
-    
+   
 def Testmethode():   
     image_url = 'https://tensorflow.org/images/surf.jpg'
     image_extension = image_url[-4:]
     image_path = tf.keras.utils.get_file('image'+image_extension, origin=image_url)
 
-    result, attention_plot = evaluate(image_path)
-    #plot_attention(image_path, result, attention_plot)
+    result = evaluate(image_path)
     # opening the image
     image = Image.open(image_path)
     st.image(image)
     st.write('Prediction Caption:', ' '.join(result))
     
+if st.button('Testknopf'):
+     Testmethode()
     
-if st.button("Test"):
-  Testmethode()
+    
