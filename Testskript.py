@@ -337,3 +337,7 @@ def Testmethode()
     plot_attention(image_path, result, attention_plot)
     # opening the image
     Image.open(image_path)
+    
+    
+if st.button("Test")
+  Testmethode()
