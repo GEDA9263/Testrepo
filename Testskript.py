@@ -45,6 +45,18 @@ def download_pics():
 PATH = download_pics()
 st.write(PATH)
 
+def load_image(image_path):
+        img = tf.io.read_file(image_path)
+        img = tf.io.decode_jpeg(img, channels=3)
+        img = tf.keras.layers.Resizing(299, 299)(img)
+        img = tf.keras.applications.inception_v3.preprocess_input(img)
+        return img, image_path
+
+image_model = tf.keras.applications.InceptionV3(include_top=False,
+                                                weights='imagenet')
+new_input = image_model.input
+hidden_layer = image_model.layers[-1].output
+image_features_extract_model = tf.keras.Model(new_input, hidden_layer)
 
 def make_dictionary():
     with open(annotation_file, 'r') as f:
@@ -68,37 +80,8 @@ def make_dictionary():
       caption_list = image_path_to_caption[image_path]
       train_captions.extend(caption_list)
       img_name_vector.extend([image_path] * len(caption_list))
-    
-    def load_image(image_path):
-        img = tf.io.read_file(image_path)
-        img = tf.io.decode_jpeg(img, channels=3)
-        img = tf.keras.layers.Resizing(299, 299)(img)
-        img = tf.keras.applications.inception_v3.preprocess_input(img)
-    return img, image_path
-    
-    image_model = tf.keras.applications.InceptionV3(include_top=False,
-                                                weights='imagenet')
-    new_input = image_model.input
-    hidden_layer = image_model.layers[-1].output
-    image_features_extract_model = tf.keras.Model(new_input, hidden_layer)
-    
-    # Get unique images
-    encode_train = sorted(set(img_name_vector))
-
-    # Feel free to change batch_size according to your system configuration
-    image_dataset = tf.data.Dataset.from_tensor_slices(encode_train)
-    image_dataset = image_dataset.map(
-      load_image, num_parallel_calls=tf.data.AUTOTUNE).batch(16)
-
-    for img, path in tqdm(image_dataset):
-      batch_features = image_features_extract_model(img)
-      batch_features = tf.reshape(batch_features,
-                              (batch_features.shape[0], -1, batch_features.shape[3]))
-
-      for bf, p in zip(batch_features, path):
-        path_of_feature = p.numpy().decode("utf-8")
-        np.save(path_of_feature, bf.numpy())
         
+    ##dictionary ab hier
     caption_dataset = tf.data.Dataset.from_tensor_slices(train_captions)
 
     # We will override the default standardization of TextVectorization to preserve
@@ -130,33 +113,8 @@ def make_dictionary():
         vocabulary=tokenizer.get_vocabulary(),
         invert=True)
     
-    img_to_cap_vector = collections.defaultdict(list)
-    for img, cap in zip(img_name_vector, cap_vector):
-      img_to_cap_vector[img].append(cap)
+    ##dicdionary bis hier
 
-    # Create training and validation sets using an 80-20 split randomly.
-    img_keys = list(img_to_cap_vector.keys())
-    random.shuffle(img_keys)
-
-    slice_index = int(len(img_keys)*0.8)
-    img_name_train_keys, img_name_val_keys = img_keys[:slice_index], img_keys[slice_index:]
-
-    img_name_train = []
-    cap_train = []
-    for imgt in img_name_train_keys:
-      capt_len = len(img_to_cap_vector[imgt])
-      img_name_train.extend([imgt] * capt_len)
-      cap_train.extend(img_to_cap_vector[imgt])
-
-    img_name_val = []
-    cap_val = []
-    for imgv in img_name_val_keys:
-      capv_len = len(img_to_cap_vector[imgv])
-      img_name_val.extend([imgv] * capv_len)
-      cap_val.extend(img_to_cap_vector[imgv])
-
-
-make_dictionary()
 # Feel free to change these parameters according to your system's configuration
 
 BATCH_SIZE = 64
@@ -168,22 +126,6 @@ num_steps = len(img_name_train) // BATCH_SIZE
 # These two variables represent that vector shape
 features_shape = 2048
 attention_features_shape = 64
-
-# Load the numpy files
-def map_func(img_name, cap):
-  img_tensor = np.load(img_name.decode('utf-8')+'.npy')
-  return img_tensor, cap
-
-dataset = tf.data.Dataset.from_tensor_slices((img_name_train, cap_train))
-
-# Use map to load the numpy files in parallel
-dataset = dataset.map(lambda item1, item2: tf.numpy_function(
-          map_func, [item1, item2], [tf.float32, tf.int64]),
-          num_parallel_calls=tf.data.AUTOTUNE)
-
-# Shuffle and batch
-dataset = dataset.shuffle(BUFFER_SIZE).batch(BATCH_SIZE)
-dataset = dataset.prefetch(buffer_size=tf.data.AUTOTUNE)
 
 @st.cache
 class BahdanauAttention(tf.keras.Model):
@@ -291,8 +233,14 @@ def loss_function(real, pred):
 
   return tf.reduce_mean(loss_)
 
+
 @st.cache
 def check_checkpoints():
+    checkpoint_path = "./checkpoints/train"
+    ckpt = tf.train.Checkpoint(encoder=encoder,
+                               decoder=decoder,
+                               optimizer=optimizer)
+    ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_path, max_to_keep=5)
     if ckpt_manager.latest_checkpoint:
         start_epoch = int(ckpt_manager.latest_checkpoint.split('-')[-1])
         # restoring the latest checkpoint in checkpoint_path
