@@ -57,8 +57,9 @@ image_model = tf.keras.applications.InceptionV3(include_top=False,
 new_input = image_model.input
 hidden_layer = image_model.layers[-1].output
 image_features_extract_model = tf.keras.Model(new_input, hidden_layer)
+max_length = 50
 
-
+@st.cache(allow_output_mutation=True)
 def make_dictionary():
     with open(annotation_file, 'r') as f:
         annotations = json.load(f)
@@ -93,7 +94,7 @@ def make_dictionary():
                                   r"!\"#$%&\(\)\*\+.,-/:;=?@\[\\\]^_`{|}~", "")
 
     # Max word count for a caption.
-    max_length = 50
+    
     # Use the top 5000 words for a vocabulary.
     vocabulary_size = 5000
     tokenizer = tf.keras.layers.TextVectorization(
@@ -105,24 +106,27 @@ def make_dictionary():
     
     cap_vector = caption_dataset.map(lambda x: tokenizer(x))
     
-    return tokenizer
     ##dicdionary bis hier
+    return tokenizer
+
+
+
 tokenizer = make_dictionary()
 # Create mappings for words to indices and indices to words.
 word_to_index = tf.keras.layers.StringLookup(
-      mask_token="",
-      vocabulary=tokenizer.get_vocabulary())
+    mask_token="",
+    vocabulary=tokenizer.get_vocabulary())
 index_to_word = tf.keras.layers.StringLookup(
-      mask_token="",
-      vocabulary=tokenizer.get_vocabulary(),
-      invert=True)
+    mask_token="",
+    vocabulary=tokenizer.get_vocabulary(),
+    invert=True)
 # Feel free to change these parameters according to your system's configuration
 
 BATCH_SIZE = 64
 BUFFER_SIZE = 1000
 embedding_dim = 256
 units = 512
-num_steps = 24000 // BATCH_SIZE
+num_steps = 375 # // BATCH_SIZE
 # Shape of the vector extracted from InceptionV3 is (64, 2048)
 # These two variables represent that vector shape
 features_shape = 2048
@@ -159,6 +163,7 @@ class BahdanauAttention(tf.keras.Model):
     context_vector = tf.reduce_sum(context_vector, axis=1)
 
     return context_vector, attention_weights
+
 
 class CNN_Encoder(tf.keras.Model):
     # Since you have already extracted the features and dumped it
@@ -234,7 +239,7 @@ def loss_function(real, pred):
   return tf.reduce_mean(loss_)
 
 
-@st.cache
+
 def check_checkpoints():
     checkpoint_path = "./checkpoints/train"
     ckpt = tf.train.Checkpoint(encoder=encoder,
@@ -275,7 +280,7 @@ def evaluate(image):
         result.append(predicted_word)
 
         if predicted_word == '<end>':
-            return result, attention_plot
+            return result
 
         dec_input = tf.expand_dims([predicted_id], 0)
 
@@ -290,7 +295,8 @@ def Testmethode():
     st.write('Prediction Caption:', ' '.join(result))
     #plot_attention(image_path, result, attention_plot)
     # opening the image
-    st.image(image_path)
+    image = Image.open(image_path)
+    st.image(image)
     
 if st.button('Testknopf'):
      Testmethode()
