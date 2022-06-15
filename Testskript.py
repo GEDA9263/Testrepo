@@ -121,7 +121,7 @@ BATCH_SIZE = 64
 BUFFER_SIZE = 1000
 embedding_dim = 256
 units = 512
-num_steps = len(img_name_train) // BATCH_SIZE
+num_steps = 24000 // BATCH_SIZE
 # Shape of the vector extracted from InceptionV3 is (64, 2048)
 # These two variables represent that vector shape
 features_shape = 2048
