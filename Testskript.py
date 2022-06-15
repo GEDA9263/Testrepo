@@ -111,8 +111,8 @@ def make_dictionary():
 
 @st.cache
 def generate_tokenizer() :
-    tokenizer = make_dictionary()
-    return tokenizer
+    return make_dictionary()
+   
 
 tokenizer = generate_tokenizer()
 # Create mappings for words to indices and indices to words.
