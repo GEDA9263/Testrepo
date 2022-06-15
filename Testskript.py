@@ -109,10 +109,10 @@ def make_dictionary():
     ##dicdionary bis hier
 tokenizer = make_dictionary()
 # Create mappings for words to indices and indices to words.
- word_to_index = tf.keras.layers.StringLookup(
+word_to_index = tf.keras.layers.StringLookup(
       mask_token="",
       vocabulary=tokenizer.get_vocabulary())
- index_to_word = tf.keras.layers.StringLookup(
+index_to_word = tf.keras.layers.StringLookup(
       mask_token="",
       vocabulary=tokenizer.get_vocabulary(),
       invert=True)
