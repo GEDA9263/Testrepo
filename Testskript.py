@@ -58,7 +58,7 @@ new_input = image_model.input
 hidden_layer = image_model.layers[-1].output
 image_features_extract_model = tf.keras.Model(new_input, hidden_layer)
 
-@st.cache
+
 def make_dictionary():
     with open(annotation_file, 'r') as f:
         annotations = json.load(f)
