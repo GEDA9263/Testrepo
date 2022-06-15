@@ -10,7 +10,6 @@ import time
 import json
 from PIL import Image
 
-
 @st.cache
 def folder_assign():
     annotation_folder = '/annotations/'
@@ -45,108 +44,117 @@ def download_pics():
 
 PATH = download_pics()
 st.write(PATH)
-with open(annotation_file, 'r') as f:
-    annotations = json.load(f)
+
+
+def make_dictionary():
+    with open(annotation_file, 'r') as f:
+        annotations = json.load(f)
     
-# Group all captions together having the same image ID.
+    # Group all captions together having the same image ID.
+    image_path_to_caption = collections.defaultdict(list)
+    for val in annotations['annotations']:
+      caption = f"<start> {val['caption']} <end>"
+      image_path = PATH + 'COCO_train2014_' + '%012d.jpg' % (val['image_id'])
+      image_path_to_caption[image_path].append(caption)
 
-image_path_to_caption = collections.defaultdict(list)
+    image_paths = list(image_path_to_caption.keys())
+    random.shuffle(image_paths)
+    train_image_paths = image_paths[:6000]
+    
+    train_captions = []
+    img_name_vector = []
 
-for val in annotations['annotations']:
-  caption = f"<start> {val['caption']} <end>"
-  image_path = PATH + 'COCO_train2014_' + '%012d.jpg' % (val['image_id'])
-  image_path_to_caption[image_path].append(caption)
-
-image_paths = list(image_path_to_caption.keys())
-random.shuffle(image_paths)
-
-# Select the first 6000 image_paths from the shuffled set.
-# Approximately each image id has 5 captions associated with it, so that will
-# lead to 30,000 examples.
-train_image_paths = image_paths[:6000]
-
-train_captions = []
-img_name_vector = []
-
-for image_path in train_image_paths:
-  caption_list = image_path_to_caption[image_path]
-  train_captions.extend(caption_list)
-  img_name_vector.extend([image_path] * len(caption_list))
-
-
-def load_image(image_path):
-    img = tf.io.read_file(image_path)
-    img = tf.io.decode_jpeg(img, channels=3)
-    img = tf.keras.layers.Resizing(299, 299)(img)
-    img = tf.keras.applications.inception_v3.preprocess_input(img)
+    for image_path in train_image_paths:
+      caption_list = image_path_to_caption[image_path]
+      train_captions.extend(caption_list)
+      img_name_vector.extend([image_path] * len(caption_list))
+    
+    def load_image(image_path):
+        img = tf.io.read_file(image_path)
+        img = tf.io.decode_jpeg(img, channels=3)
+        img = tf.keras.layers.Resizing(299, 299)(img)
+        img = tf.keras.applications.inception_v3.preprocess_input(img)
     return img, image_path
-
-image_model = tf.keras.applications.InceptionV3(include_top=False,
+    
+    image_model = tf.keras.applications.InceptionV3(include_top=False,
                                                 weights='imagenet')
-new_input = image_model.input
-hidden_layer = image_model.layers[-1].output
+    new_input = image_model.input
+    hidden_layer = image_model.layers[-1].output
+    image_features_extract_model = tf.keras.Model(new_input, hidden_layer)
+    
+    # Get unique images
+    encode_train = sorted(set(img_name_vector))
 
-image_features_extract_model = tf.keras.Model(new_input, hidden_layer)
+    # Feel free to change batch_size according to your system configuration
+    image_dataset = tf.data.Dataset.from_tensor_slices(encode_train)
+    image_dataset = image_dataset.map(
+      load_image, num_parallel_calls=tf.data.AUTOTUNE).batch(16)
 
-caption_dataset = tf.data.Dataset.from_tensor_slices(train_captions)
+    for img, path in tqdm(image_dataset):
+      batch_features = image_features_extract_model(img)
+      batch_features = tf.reshape(batch_features,
+                              (batch_features.shape[0], -1, batch_features.shape[3]))
 
-# We will override the default standardization of TextVectorization to preserve
-# "<>" characters, so we preserve the tokens for the <start> and <end>.
-@st.cache
-def standardize(inputs):
-  inputs = tf.strings.lower(inputs)
-  return tf.strings.regex_replace(inputs,
+      for bf, p in zip(batch_features, path):
+        path_of_feature = p.numpy().decode("utf-8")
+        np.save(path_of_feature, bf.numpy())
+        
+    caption_dataset = tf.data.Dataset.from_tensor_slices(train_captions)
+
+    # We will override the default standardization of TextVectorization to preserve
+    # "<>" characters, so we preserve the tokens for the <start> and <end>.
+    def standardize(inputs):
+      inputs = tf.strings.lower(inputs)
+      return tf.strings.regex_replace(inputs,
                                   r"!\"#$%&\(\)\*\+.,-/:;=?@\[\\\]^_`{|}~", "")
 
-# Max word count for a caption.
-max_length = 50
-# Use the top 5000 words for a vocabulary.
-vocabulary_size = 5000
-tokenizer = tf.keras.layers.TextVectorization(
-    max_tokens=vocabulary_size,
-    standardize=standardize,
-    output_sequence_length=max_length)
-# Learn the vocabulary from the caption data.
-tokenizer.adapt(caption_dataset)
+    # Max word count for a caption.
+    max_length = 50
+    # Use the top 5000 words for a vocabulary.
+    vocabulary_size = 5000
+    tokenizer = tf.keras.layers.TextVectorization(
+        max_tokens=vocabulary_size,
+        standardize=standardize,
+        output_sequence_length=max_length)
+    # Learn the vocabulary from the caption data.
+    tokenizer.adapt(caption_dataset)
+    
+    cap_vector = caption_dataset.map(lambda x: tokenizer(x))
+    
+    # Create mappings for words to indices and indices to words.
+    word_to_index = tf.keras.layers.StringLookup(
+        mask_token="",
+        vocabulary=tokenizer.get_vocabulary())
+    index_to_word = tf.keras.layers.StringLookup(
+        mask_token="",
+        vocabulary=tokenizer.get_vocabulary(),
+        invert=True)
+    
+    img_to_cap_vector = collections.defaultdict(list)
+    for img, cap in zip(img_name_vector, cap_vector):
+      img_to_cap_vector[img].append(cap)
 
-# Create the tokenized vectors
-cap_vector = caption_dataset.map(lambda x: tokenizer(x))
+    # Create training and validation sets using an 80-20 split randomly.
+    img_keys = list(img_to_cap_vector.keys())
+    random.shuffle(img_keys)
 
-# Create mappings for words to indices and indices to words.
-word_to_index = tf.keras.layers.StringLookup(
-    mask_token="",
-    vocabulary=tokenizer.get_vocabulary())
-index_to_word = tf.keras.layers.StringLookup(
-    mask_token="",
-    vocabulary=tokenizer.get_vocabulary(),
-    invert=True)
+    slice_index = int(len(img_keys)*0.8)
+    img_name_train_keys, img_name_val_keys = img_keys[:slice_index], img_keys[slice_index:]
 
-img_to_cap_vector = collections.defaultdict(list)
-for img, cap in zip(img_name_vector, cap_vector):
-  img_to_cap_vector[img].append(cap)
+    img_name_train = []
+    cap_train = []
+    for imgt in img_name_train_keys:
+      capt_len = len(img_to_cap_vector[imgt])
+      img_name_train.extend([imgt] * capt_len)
+      cap_train.extend(img_to_cap_vector[imgt])
 
-# Create training and validation sets using an 80-20 split randomly.
-img_keys = list(img_to_cap_vector.keys())
-random.shuffle(img_keys)
+    img_name_val = []
+    cap_val = []
+    for imgv in img_name_val_keys:
+      capv_len = len(img_to_cap_vector[imgv])
+      img_name_val.extend([imgv] * capv_len)
+      cap_val.extend(img_to_cap_vector[imgv])
 
-slice_index = int(len(img_keys)*0.8)
-img_name_train_keys, img_name_val_keys = img_keys[:slice_index], img_keys[slice_index:]
-
-img_name_train = []
-cap_train = []
-for imgt in img_name_train_keys:
-  capt_len = len(img_to_cap_vector[imgt])
-  img_name_train.extend([imgt] * capt_len)
-  cap_train.extend(img_to_cap_vector[imgt])
-
-img_name_val = []
-cap_val = []
-for imgv in img_name_val_keys:
-  capv_len = len(img_to_cap_vector[imgv])
-  img_name_val.extend([imgv] * capv_len)
-  cap_val.extend(img_to_cap_vector[imgv])
-
-len(img_name_train), len(cap_train), len(img_name_val), len(cap_val)
 
 # Feel free to change these parameters according to your system's configuration
 
@@ -161,8 +169,6 @@ features_shape = 2048
 attention_features_shape = 64
 
 # Load the numpy files
-
-@st.cache
 def map_func(img_name, cap):
   img_tensor = np.load(img_name.decode('utf-8')+'.npy')
   return img_tensor, cap
@@ -177,6 +183,7 @@ dataset = dataset.map(lambda item1, item2: tf.numpy_function(
 # Shuffle and batch
 dataset = dataset.shuffle(BUFFER_SIZE).batch(BATCH_SIZE)
 dataset = dataset.prefetch(buffer_size=tf.data.AUTOTUNE)
+
 @st.cache
 class BahdanauAttention(tf.keras.Model):
   def __init__(self, units):
@@ -208,7 +215,7 @@ class BahdanauAttention(tf.keras.Model):
     context_vector = tf.reduce_sum(context_vector, axis=1)
 
     return context_vector, attention_weights
-  
+
 @st.cache
 class CNN_Encoder(tf.keras.Model):
     # Since you have already extracted the features and dumped it
@@ -222,8 +229,8 @@ class CNN_Encoder(tf.keras.Model):
         x = self.fc(x)
         x = tf.nn.relu(x)
         return x
-      
-@st.cache   
+
+    @st.cache
 class RNN_Decoder(tf.keras.Model):
   def __init__(self, embedding_dim, units, vocab_size):
     super(RNN_Decoder, self).__init__()
@@ -266,7 +273,6 @@ class RNN_Decoder(tf.keras.Model):
   def reset_state(self, batch_size):
     return tf.zeros((batch_size, self.units))
 
-
 encoder = CNN_Encoder(embedding_dim)
 decoder = RNN_Decoder(embedding_dim, units, tokenizer.vocabulary_size())
 
@@ -274,7 +280,7 @@ optimizer = tf.keras.optimizers.Adam()
 loss_object = tf.keras.losses.SparseCategoricalCrossentropy(
     from_logits=True, reduction='none')
 
-@st.cache
+
 def loss_function(real, pred):
   mask = tf.math.logical_not(tf.math.equal(real, 0))
   loss_ = loss_object(real, pred)
@@ -284,14 +290,6 @@ def loss_function(real, pred):
 
   return tf.reduce_mean(loss_)
 
-checkpoint_path = "./checkpoints/train"
-ckpt = tf.train.Checkpoint(encoder=encoder,
-                           decoder=decoder,
-                           optimizer=optimizer)
-ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_path, max_to_keep=5)
-
-start_epoch = 0
-
 @st.cache
 def check_checkpoints():
     if ckpt_manager.latest_checkpoint:
@@ -299,11 +297,10 @@ def check_checkpoints():
         # restoring the latest checkpoint in checkpoint_path
         ckpt.restore(ckpt_manager.latest_checkpoint)
 
-check_checkpoints()        
+check_checkpoints()    
 
 def evaluate(image):
-    attention_plot = np.zeros((max_length, attention_features_shape))
-
+    
     hidden = decoder.reset_state(batch_size=1)
 
     temp_input = tf.expand_dims(load_image(image)[0], 0)
@@ -322,7 +319,7 @@ def evaluate(image):
                                                          features,
                                                          hidden)
 
-        attention_plot[i] = tf.reshape(attention_weights, (-1, )).numpy()
+
 
         predicted_id = tf.random.categorical(predictions, 1)[0][0].numpy()
         predicted_word = tf.compat.as_text(index_to_word(predicted_id).numpy())
@@ -333,21 +330,18 @@ def evaluate(image):
 
         dec_input = tf.expand_dims([predicted_id], 0)
 
-    attention_plot = attention_plot[:len(result), :]
-    return result, attention_plot
-   
+    return result
+
 def Testmethode():   
     image_url = 'https://tensorflow.org/images/surf.jpg'
     image_extension = image_url[-4:]
     image_path = tf.keras.utils.get_file('image'+image_extension, origin=image_url)
 
     result = evaluate(image_path)
-    # opening the image
-    image = Image.open(image_path)
-    st.image(image)
     st.write('Prediction Caption:', ' '.join(result))
+    #plot_attention(image_path, result, attention_plot)
+    # opening the image
+    st.image(image_path)
     
 if st.button('Testknopf'):
      Testmethode()
-    
-    
