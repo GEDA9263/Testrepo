@@ -12,7 +12,7 @@ from PIL import Image
 
 st.header('This is an Image Captioning App')
 
-@st.cache(max_entries=5)
+@st.cache()
 def folder_assign():
     annotation_folder = '/annotations/'
     if not os.path.exists(os.path.abspath('.') + annotation_folder):
@@ -28,7 +28,7 @@ def folder_assign():
         
 annotation_file = folder_assign()
 # Download image files
-@st.cache(max_entries=5)
+@st.cache()
 def download_pics():
     image_folder = '/train2014/'
     if not os.path.exists(os.path.abspath('.') + image_folder):
@@ -59,7 +59,7 @@ hidden_layer = image_model.layers[-1].output
 image_features_extract_model = tf.keras.Model(new_input, hidden_layer)
 max_length = 50
 
-@st.cache(allow_output_mutation=True, max_entries=5)
+@st.cache(allow_output_mutation=True, ttl=1800)
 def make_dictionary():
     with open(annotation_file, 'r') as f:
         annotations = json.load(f)
@@ -109,7 +109,7 @@ def make_dictionary():
     ##dicdionary bis hier
     return tokenizer
 
-@st.cache(allow_output_mutation=True, max_entries=5, hash_funcs={"keras.utils.object_identity.ObjectIdentityDictionary": lambda _: None})
+@st.cache(allow_output_mutation=True, ttl=1800, hash_funcs={"keras.utils.object_identity.ObjectIdentityDictionary": lambda _: None})
 def generate_tokenizer() :
     return make_dictionary()
    
@@ -232,18 +232,9 @@ loss_object = tf.keras.losses.SparseCategoricalCrossentropy(
     from_logits=True, reduction='none')
 
 
-def loss_function(real, pred):
-  mask = tf.math.logical_not(tf.math.equal(real, 0))
-  loss_ = loss_object(real, pred)
-
-  mask = tf.cast(mask, dtype=loss_.dtype)
-  loss_ *= mask
-
-  return tf.reduce_mean(loss_)
-
-@st.cache(allow_output_mutation=True, max_entries=5, hash_funcs={"keras.utils.object_identity.ObjectIdentityDictionary": lambda _: None,
-                                                                 "builtins.weakref": lambda _: None,
-                                                                  "tensorflow.python.training.tracking.base.TrackableReference": lambda _: None,  })
+@st.cache(allow_output_mutation=True, hash_funcs={"keras.utils.object_identity.ObjectIdentityDictionary": lambda _: None,
+                                                  "builtins.weakref": lambda _: None,
+                                                  "tensorflow.python.training.tracking.base.TrackableReference": lambda _: None,  })
 def check_checkpoints():
     checkpoint_path = "./checkpoints/train"
     ckpt = tf.train.Checkpoint(encoder=encoder,
@@ -255,6 +246,7 @@ def check_checkpoints():
         # restoring the latest checkpoint in checkpoint_path
         ckpt.restore(ckpt_manager.latest_checkpoint)
 
+@st.cache
 check_checkpoints()    
 
 def evaluate(image):
