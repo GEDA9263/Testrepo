@@ -58,6 +58,7 @@ new_input = image_model.input
 hidden_layer = image_model.layers[-1].output
 image_features_extract_model = tf.keras.Model(new_input, hidden_layer)
 
+@st.cache
 def make_dictionary():
     with open(annotation_file, 'r') as f:
         annotations = json.load(f)
@@ -114,7 +115,7 @@ def make_dictionary():
         invert=True)
     
     ##dicdionary bis hier
-
+make_dictionary
 # Feel free to change these parameters according to your system's configuration
 
 BATCH_SIZE = 64
@@ -127,7 +128,7 @@ num_steps = 24000 // BATCH_SIZE
 features_shape = 2048
 attention_features_shape = 64
 
-@st.cache
+
 class BahdanauAttention(tf.keras.Model):
   def __init__(self, units):
     super(BahdanauAttention, self).__init__()
@@ -159,7 +160,6 @@ class BahdanauAttention(tf.keras.Model):
 
     return context_vector, attention_weights
 
-@st.cache
 class CNN_Encoder(tf.keras.Model):
     # Since you have already extracted the features and dumped it
     # This encoder passes those features through a Fully connected layer
@@ -173,7 +173,7 @@ class CNN_Encoder(tf.keras.Model):
         x = tf.nn.relu(x)
         return x
 
-@st.cache
+
 class RNN_Decoder(tf.keras.Model):
   def __init__(self, embedding_dim, units, vocab_size):
     super(RNN_Decoder, self).__init__()
