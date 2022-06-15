@@ -73,7 +73,7 @@ def make_dictionary():
 
     image_paths = list(image_path_to_caption.keys())
     random.shuffle(image_paths)
-    train_image_paths = image_paths[40000]
+    train_image_paths = image_paths[:40000]
     
     train_captions = []
     img_name_vector = []
