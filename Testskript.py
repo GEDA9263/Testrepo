@@ -238,7 +238,9 @@ def loss_function(real, pred):
 
   return tf.reduce_mean(loss_)
 
-@st.cache(allow_output_mutation=True)
+@st.cache(allow_output_mutation=True, hash_funcs={"keras.utils.object_identity.ObjectIdentityDictionary": lambda _: None,
+                                                   "builtins.weakref": lambda _: None,
+                                                   "tensorflow.python.training.tracking.base.TrackableReference": lambda _: None,  })
 def check_checkpoints():
     checkpoint_path = "./checkpoints/train"
     ckpt = tf.train.Checkpoint(encoder=encoder,
