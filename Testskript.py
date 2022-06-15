@@ -156,6 +156,7 @@ def make_dictionary():
       cap_val.extend(img_to_cap_vector[imgv])
 
 
+make_dictionary()
 # Feel free to change these parameters according to your system's configuration
 
 BATCH_SIZE = 64
