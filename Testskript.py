@@ -105,17 +105,17 @@ def make_dictionary():
     
     cap_vector = caption_dataset.map(lambda x: tokenizer(x))
     
-    # Create mappings for words to indices and indices to words.
-    word_to_index = tf.keras.layers.StringLookup(
-        mask_token="",
-        vocabulary=tokenizer.get_vocabulary())
-    index_to_word = tf.keras.layers.StringLookup(
-        mask_token="",
-        vocabulary=tokenizer.get_vocabulary(),
-        invert=True)
-    
+    return tokenizer
     ##dicdionary bis hier
-make_dictionary
+tokenizer = make_dictionary()
+# Create mappings for words to indices and indices to words.
+ word_to_index = tf.keras.layers.StringLookup(
+      mask_token="",
+      vocabulary=tokenizer.get_vocabulary())
+ index_to_word = tf.keras.layers.StringLookup(
+      mask_token="",
+      vocabulary=tokenizer.get_vocabulary(),
+      invert=True)
 # Feel free to change these parameters according to your system's configuration
 
 BATCH_SIZE = 64
