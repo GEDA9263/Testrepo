@@ -230,7 +230,7 @@ class CNN_Encoder(tf.keras.Model):
         x = tf.nn.relu(x)
         return x
 
-    @st.cache
+@st.cache
 class RNN_Decoder(tf.keras.Model):
   def __init__(self, embedding_dim, units, vocab_size):
     super(RNN_Decoder, self).__init__()
