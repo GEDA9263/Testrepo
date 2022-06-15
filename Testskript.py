@@ -109,9 +109,12 @@ def make_dictionary():
     ##dicdionary bis hier
     return tokenizer
 
+@st.cache
+def generate_tokenizer() :
+    tokenizer = make_dictionary()
+    return tokenizer
 
-
-tokenizer = make_dictionary()
+tokenizer = generate_tokenizer()
 # Create mappings for words to indices and indices to words.
 word_to_index = tf.keras.layers.StringLookup(
     mask_token="",
