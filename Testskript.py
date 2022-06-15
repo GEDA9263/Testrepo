@@ -238,8 +238,7 @@ def loss_function(real, pred):
 
   return tf.reduce_mean(loss_)
 
-
-
+@st.cache(allow_output_mutation=True)
 def check_checkpoints():
     checkpoint_path = "./checkpoints/train"
     ckpt = tf.train.Checkpoint(encoder=encoder,
