@@ -246,7 +246,6 @@ def check_checkpoints():
         # restoring the latest checkpoint in checkpoint_path
         ckpt.restore(ckpt_manager.latest_checkpoint)
 
-@st.cache
 check_checkpoints()    
 
 def evaluate(image):
