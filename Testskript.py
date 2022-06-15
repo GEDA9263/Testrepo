@@ -10,6 +10,8 @@ import time
 import json
 from PIL import Image
 
+st.header('This is an Image Captioning App')
+
 @st.cache
 def folder_assign():
     annotation_folder = '/annotations/'
@@ -25,7 +27,6 @@ def folder_assign():
 
         
 annotation_file = folder_assign()
-st.write(annotation_file)
 # Download image files
 @st.cache
 def download_pics():
@@ -43,7 +44,6 @@ def download_pics():
 
 
 PATH = download_pics()
-st.write(PATH)
 
 def load_image(image_path):
         img = tf.io.read_file(image_path)
