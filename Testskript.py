@@ -109,7 +109,7 @@ def make_dictionary():
     ##dicdionary bis hier
     return tokenizer
 
-@st.cache
+@st.cache(allow_output_mutation=True, hash_funcs={"keras.utils.object_identity.ObjectIdentityDictionary": lambda _: None})
 def generate_tokenizer() :
     return make_dictionary()
    
