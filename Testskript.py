@@ -12,7 +12,7 @@ from PIL import Image
 
 st.header('This is an Image Captioning App')
 
-@st.cache()
+@st.cache(ttl = 300)
 def folder_assign():
     annotation_folder = '/annotations/'
     if not os.path.exists(os.path.abspath('.') + annotation_folder):
@@ -28,7 +28,7 @@ def folder_assign():
         
 annotation_file = folder_assign()
 # Download image files
-@st.cache()
+@st.cache(ttl = 300)
 def download_pics():
     image_folder = '/train2014/'
     if not os.path.exists(os.path.abspath('.') + image_folder):
@@ -232,7 +232,7 @@ loss_object = tf.keras.losses.SparseCategoricalCrossentropy(
     from_logits=True, reduction='none')
 
 
-@st.cache(allow_output_mutation=True, hash_funcs={"keras.utils.object_identity.ObjectIdentityDictionary": lambda _: None,
+@st.cache(allow_output_mutation=True, ttl = 1800, hash_funcs={"keras.utils.object_identity.ObjectIdentityDictionary": lambda _: None,
                                                   "builtins.weakref": lambda _: None,
                                                   "tensorflow.python.training.tracking.base.TrackableReference": lambda _: None,  })
 def check_checkpoints():
