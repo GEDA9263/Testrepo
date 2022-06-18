@@ -57,7 +57,6 @@ image_model = tf.keras.applications.InceptionV3(include_top=False,
 new_input = image_model.input
 hidden_layer = image_model.layers[-1].output
 image_features_extract_model = tf.keras.Model(new_input, hidden_layer)
-max_length = 50
 
 @st.cache(allow_output_mutation=True, ttl=1800)
 def make_dictionary():
@@ -94,7 +93,7 @@ def make_dictionary():
                                   r"!\"#$%&\(\)\*\+.,-/:;=?@\[\\\]^_`{|}~", "")
 
     # Max word count for a caption.
-    
+    max_length = 50
     # Use the top 5000 words for a vocabulary.
     vocabulary_size = 5000
     tokenizer = tf.keras.layers.TextVectorization(
@@ -242,8 +241,6 @@ def check_checkpoints():
                                optimizer=optimizer)
     ckpt_manager = tf.train.CheckpointManager(ckpt, checkpoint_path, max_to_keep=5)
     if ckpt_manager.latest_checkpoint:
-        start_epoch = int(ckpt_manager.latest_checkpoint.split('-')[-1])
-        # restoring the latest checkpoint in checkpoint_path
         ckpt.restore(ckpt_manager.latest_checkpoint)
 
 check_checkpoints()    
