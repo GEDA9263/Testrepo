@@ -247,6 +247,7 @@ check_checkpoints()
 
 def evaluate(image):
     
+    max_length = 50
     hidden = decoder.reset_state(batch_size=1)
 
     temp_input = tf.expand_dims(load_image(image)[0], 0)
