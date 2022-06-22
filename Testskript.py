@@ -51,12 +51,21 @@ def load_image(image_path):
         img = tf.keras.layers.Resizing(299, 299)(img)
         img = tf.keras.applications.inception_v3.preprocess_input(img)
         return img, image_path
-
+    
+    
+# We will override the default standardization of TextVectorization to preserve
+# "<>" characters, so we preserve the tokens for the <start> and <end>.    
+def standardize(inputs):
+      inputs = tf.strings.lower(inputs)
+      return tf.strings.regex_replace(inputs,
+                                  r"!\"#$%&\(\)\*\+.,-/:;=?@\[\\\]^_`{|}~", "")
+    
 image_model = tf.keras.applications.InceptionV3(include_top=False,
                                                 weights='imagenet')
 new_input = image_model.input
 hidden_layer = image_model.layers[-1].output
 image_features_extract_model = tf.keras.Model(new_input, hidden_layer)
+
 
 @st.cache(allow_output_mutation=True, ttl=1800)
 def make_dictionary():
@@ -84,13 +93,6 @@ def make_dictionary():
         
     ##dictionary ab hier
     caption_dataset = tf.data.Dataset.from_tensor_slices(train_captions)
-
-    # We will override the default standardization of TextVectorization to preserve
-    # "<>" characters, so we preserve the tokens for the <start> and <end>.
-    def standardize(inputs):
-      inputs = tf.strings.lower(inputs)
-      return tf.strings.regex_replace(inputs,
-                                  r"!\"#$%&\(\)\*\+.,-/:;=?@\[\\\]^_`{|}~", "")
 
     # Max word count for a caption.
     max_length = 50
